@@ -1,0 +1,142 @@
+---
+title: "Trabajo Practico 2 (2º entrega)"
+author: "Di Nisi, Gentile, GRUPO 11"
+date: "30/7/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+#Ejercicio 7.24, items a) y b) + Un agregado c)
+
+__ENUNCIADO:__
+Lucas entra en un banco que tiene dos cajas independientes. Pablo se esta atendiendo en la caja 1 y Pedro en la 2. Lucas sera atendido apenas uno de los dos salga de la caja. El tiempo, en min., que demora el cajero i en completar un servicio es una variable aleatoria de distribucion Exponencial de media 2^(i-1), i = 1,2 dependiendo de la caja.
+
+a) Calcular probabilidad que el primero en salir sea Pablo.
+
+b) Calcular probabilidad que el ultimo en salir sea Pablo.
+
+c) Obtener la densidad, la media y la varianza del tiempo total que se demora Lucas desde que entra hasta que sale del banco.
+
+__RESOLUCIÓN:__
+Inicialmente, haremos una breve reseña sobre como simulamos las variables que nos fueron brindadas en el ejercicio:
+
+Primero llamamos a las variables:
+
+T1: "Tiempo que demora en atender el cajero 1" T1 ~ $\epsilon$ $\frac14$
+
+T2: "Tiempo que demora en atender el cajero 2" T2 ~ $\epsilon$ $\frac12$
+
+Lo primero que hicimos en el script fue simular estas distribuciones exponenciales a traves de una uniforme que va desde 0 hasta n, siendo n una cantidad predeterminada de ensayos
+```{r}
+n<-10000
+lamda1<-as.numeric(1/4) #cajero 1 (inicialmente pablo)
+lamda2<-as.numeric(1/2) #cajero 2 (inicialmente pedro)
+#Ti= Tiempo que demora en atender el cajero i 
+simulart<-function(lamda,n){
+  u<-runif(n)
+  t<-(-log(1-u))/(lamda)
+  return(t)
+}
+t1<-simulart(lamda1,n) #tiempo que dempra pablo
+t2<-simulart(lamda2,n) #tiempo que demora pedro
+```
+\newpage A continuación adjuntamos los graficos de T1 y T2, en donde se puede apreciar los resultados que recibimos a través de la simulaciónes que realizamos y compararlos con la grafica de sus respectivas distribuciones exponenciales generadas por el entorno R. 
+
+
+```{r,echo=FALSE}
+par(mfrow=c(1,2))
+#grafico1
+hist(t1,main='Densidad cajero 1',col='grey',freq=FALSE,breaks=25,ylim=c(0,0.25))
+lines(density(t1), col='darkblue', lwd=2) #Estimada por nucleos
+curve(dexp(x,rate=1/4), add=TRUE, col='darkgreen') #Curva teorica
+legend(x="topright",legend=c("Simulada","Teorica"),fill=c("darkblue","darkgreen"))
+#grafico2
+hist(t2,main='Densidad cajero 2',col='grey',freq=FALSE,breaks=25,ylim=c(0,0.5))
+lines(density(t2), col='darkred', lwd=2)
+curve(dexp(x,rate=1/2), add=TRUE, col='darkgreen')
+legend(x="topright",legend=c("Simulada","Teorica"),fill=c("darkred","darkgreen"))
+```
+
+Luego, para el tiempo que demora Lucas, vimos que este tiempo podría comportarse de dos formas, por un lado si el primero en salir es Pablo (T1<T2) o si el primero en salir es Pedro (T2<T1) para simular estos tiempos utilizamos el siguiente codigo, donde contemplamos el tiempos que tardaría el que sale primero más el tiempo que tardará Lucas:
+```{r}
+lt1<-simulart(lamda1,n)+t1
+lt2<-simulart(lamda2,n)+t2
+```
+\newpage
+
+Adjuntamos graficos de estas simulaciones
+
+```{r,echo=FALSE}
+plot(density(lt1), col='darkblue', lwd=2,main='Tiempos de Lucas generados con simulaciones',ylim=c(0,0.2),xlab="Tiempo de espera") #Estimada por nucleos
+lines(density(lt2), col='darkred', lwd=2) #Estimada por nucleos
+legend(x="topright",legend=c("TL si T1<T2","TL si T2<T1"),fill=c("darkblue","darkred"))
+```
+Ahora si, procederemos a calcular el item a) probabilidad que el primero en salir sea Pablo:
+Para ello, lo que hicimos fue contar la cantidad de veces que en nuestra simulación se daba que el tiempo de salida de Pablo sea menor al tiempo de Pedro; adjuntamos el script y un resultado
+
+```{r}
+p1<-0
+for(i in 1:n){
+  if(t1[i]<t2[i]){p1<-p1+1}
+}
+probaA<-p1/n
+probaA
+```
+Analiticamente, el resultado obtenido para $P(T1<T2)=\frac13$
+
+Para el item b) en donde teniamos que calcular la probabilidad de que Pablo fuera el ultimo en salir, lo que hicimos fue calcular la probabilidad de el tiempo que tarda Pedro sumado a el tiempo que tarda Lucas sea menor a el tiempo que tarde Pablo.
+Este tiempo es LT2, ya que aquí estamos contemplando el tiempo que demora en el banco, osea que es la suma del tiempo de espera más el tiempo en atenderlo, en este caso, si el primero en salir es Pedro, lo que hacemos es contar las veces que sea menor a T1.
+Adjuntamos el script y un resultado:
+```{r}
+p2<-0
+for(i in 1:n){
+  if (lt2[i]<t1[i]){p2<-p2+1}
+}
+probaB<-p2/n
+probaB
+```
+Analiticamente el resultado obtenido fue $\frac49$~$0.44$
+
+Para el item c) donde debíamos hallar la densidad total del tiempo que demora Lucas, lo que hicimos fue generar un vector Y que almacene los resultados dependiendo de los valores provenientes de las simulaciones de T1 y T2. 
+Sabíamos que tendría que haber una dependencia con la frecuencia en que T1 sea menor que T2 y viceversa, por eso creímos que esta iba a ser una buena opción para generar la densidad de Lucas.
+```{r}
+y<-c()
+for(i in 1:n){
+if(t1[i]<t2[i]){y[i]<-lt1[i]}
+if(t2[i]<t1[i]){y[i]<-lt2[i]}
+}
+```
+El resultado analitico que obtuvimos para la densidad de Lucas obtenido es:
+$$f_L(t)=\frac18*(exp(\frac t4)-exp(\frac {-3t}4))+exp(\frac {-t}2)-exp(\frac{-3t}4)$$
+Adjuntamos un grafico comparativo:
+```{r}
+x<-seq(0,n,1)
+m<-1/8*(exp(-x/4)-exp(-3*x/4))+exp(-x/2)-exp(-3*x/4)
+plot(x,m,type='l',col="blue",ylim=c(0,0.25),xlim=c(0,20),ylab="Densidad",xlab="Tiempo de espera",main="Comparaciones")
+lines(density(y),lwd=2,col="darkred")
+legend(x="topright",legend=c("(Y) Densidad de lucas ","Analitica"),fill=c("darkred","blue"))
+```
+
+Para el calculo de la esperanza analitica planteamos 
+$$E[L]=\int_{-\infty}^{\infty}f_L(t)*t*dt $$
+y obtuvimos que:
+$E[L]= 4 $
+Arrojamos un resultado hecho por el entorno R, a través de las simulaciones generadas
+```{r}
+mean(y)
+```
+
+
+Para el calculo de la varianza planteamos
+$Var[L]=E[L^{2}]-E[L]^{2}$
+Siendo:
+$$E[L^{2}]=\int_{-\infty}^{\infty}f_L(t)*t^{2}*dt $$
+y obtuvimos que:
+$Var[L]=\frac{32}3$~$10.6$
+Arrojamos un resultado hecho por el entorno R, a través de las simulaciones generadas
+```{r}
+var(y)
+```
+
